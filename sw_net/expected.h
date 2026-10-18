@@ -1,0 +1,3 @@
+#define HEADS_WORDS 215475u
+#define EXPECTED_HASH_HI 0x3194ceb4u
+#define EXPECTED_HASH_LO 0x70b8b4c4u

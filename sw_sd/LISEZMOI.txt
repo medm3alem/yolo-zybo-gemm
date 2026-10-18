@@ -1,0 +1,13 @@
+FIGURES DU RAPPORT
+==================
+1) Copier ce dossier (make_figures.py, lancer_figures.ps1) dans yolo_hw\sw_sd  (ou n'importe ou).
+2) Les donnees sont cherchees dans yolo_hw\logs :
+   - resultats_*\benchmark.csv et resultats.csv  (copie de out\ de la carte SD, faite par lire_resultats.ps1)
+   - serie_*.txt : log du test des 21 couches (contient "BILAN : TOUT OK") et log du reseau complet (contient des lignes LAYER)
+   - vivado_util.rpt (facultatif) : copier le rapport d'utilisation de Vivado dans yolo_hw\logs
+   - mesures_puissance.csv (facultatif) : voir mesures_puissance_modele.csv ; puissances en watts relevees au wattmetre USB
+     (repos = carte sous tension sans calcul ; arm = pendant le calcul ARM seul ; ip = pendant le calcul ARM + IP)
+3) powershell -ExecutionPolicy Bypass -File .\lancer_figures.ps1
+4) Les figures sont dans yolo_hw\rapport_figures (PDF a inclure avec \includegraphics, PNG pour apercu) + chiffres_cles.txt.
+   Envoyer les figures et chiffres_cles.txt pour la redaction du .tex.
+Options : --results <dossier> --couches <log> --e2e <log> --vivado <rpt> --puissance <csv> --q8dt-ms <ms, 0 = masquer l'estimation 2 coeurs>

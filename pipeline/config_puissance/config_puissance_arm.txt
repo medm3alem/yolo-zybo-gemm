@@ -1,0 +1,3 @@
+modes=neon
+repeat=50
+diag=0

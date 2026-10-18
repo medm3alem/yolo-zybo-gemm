@@ -1,0 +1,6 @@
+the_ROM_image:
+{
+	[bootloader]C:/Users/USER/Desktop/yolo_hw/vitis_ws/plat_tile/export/plat_tile/sw/plat_tile/boot/fsbl.elf
+	C:/Users/USER/Desktop/yolo_hw/vitis_ws/plat_tile/hw/design_1_wrapper.bit
+	C:/Users/USER/Desktop/yolo_hw/vitis_ws/yolo_sd/Release/yolo_sd.elf
+}

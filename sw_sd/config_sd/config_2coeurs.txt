@@ -1,0 +1,3 @@
+modes=ip,neon,neon2
+repeat=5
+diag=0

@@ -1,0 +1,18 @@
+Dossier de resultats : C:\Users\USER\Desktop\yolo_hw\logs\resultats_20261018_193758  (15 lignes benchmark, 5 lignes resultats)
+Log test des couches : C:\Users\USER\Desktop\yolo_hw\logs\serie_20261017_163249.txt
+Log reseau complet (LAYER) : C:\Users\USER\Desktop\yolo_hw\logs\serie_20261017_212419.txt
+Reseau complet : ARM seul 4489.3 ms ; ARM+IP 1406.4 ms ; acceleration x3.19
+Produits matriciels : ARM seul 3577.9 ms ; IP 385.0 ms ; acceleration x9.29
+Part des produits matriciels dans le temps ARM seul : 79.7 % ; limite d'Amdahl x4.93 ; Amdahl a x9.3 : x3.46
+Part de l'IP dans le temps ARM+IP : 27.4 % ; ARM (quant+post+autres) : 67.9 %
+Ecart-type maximal du temps du reseau sur 5 repetitions : IP 0.80 ms ; NEON 1.39 ms
+Multiplications-accumulations (21 couches) : 3.454 G ; IP (test couches) : 387.2 ms = 8.92 GMAC/s ; NEON : 0.97 GMAC/s
+ARM seul 2 coeurs (mesure) : reseau 2841.8 ms ; produits matriciels 1932.7 ms ; gain vs 1 coeur : reseau x1.58, produits matriciels x1.85 (ideal x2)
+IP contre ARM 2 coeurs (mesure) : produits matriciels x5.02 ; reseau complet x2.02
+(rappel : le noyau 2 coeurs de la Q2 donnait 1386 ms pour les produits matriciels ; ici 1933 ms avec le noyau aux formats de l'IP)
+Debit IP par couche : min 1.65 (convolution n°1) ; max 11.55 (convolution n°15) GMAC/s ; moyenne ponderee 8.92
+Couches : quant+im2col total 592.3 ms ; flush 56.4 ; IP 385.1 ; post 274.2
+Chaine complete (decodage -> detections), mode IP : 1609 ms en moyenne sur 5 images (min 1578, max 1695)
+Les barres d'erreur (min-max sur 5 repetitions) sont quasi invisibles : le temps est tres reproductible.
+Ressources FPGA : LUT 7591/53200 (14.3 %) ; Registres 14119/106400 (13.3 %) ; BRAM 38/140 (27.5 %) ; DSP 135/220 (61.4 %)
+(pas de mesures_puissance.csv : figure de l'energie non generee ; modele : colonnes mode,puissance_w avec repos / arm / ip)
