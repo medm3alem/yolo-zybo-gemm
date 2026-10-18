@@ -1,0 +1,4 @@
+modes=ip
+repeat=1
+diag=0
+production=1

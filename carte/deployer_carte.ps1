@@ -8,7 +8,8 @@
 # Parametres :
 #   -Sd D:               lettre de la carte (par defaut : volume BOOTFS, sinon l'unique disque amovible)
 #   -Images <dossier>    dossier de vos images (jpg, jpeg, png, bmp) a copier dans images\ de la carte (remplace les anciennes)
-#   -Config normal|benchmark|complet   normal = IP, 1 passage ; benchmark = IP + ARM NEON, 5 passages ; complet = avec ARM scalaire
+#   -Config normal|benchmark|complet|production   normal = IP, 1 passage ; benchmark = IP + ARM NEON, 5 passages ; complet = avec ARM scalaire ;
+#                      production = IP, 1 passage, SEULE l'image annotee est ecrite dans out\ (pas de .txt ni de csv)
 #   -Reconstruire        recompile le programme meme s'il existe deja
 #   -SansEjecter         ne pas ejecter la carte a la fin
 param(
@@ -24,7 +25,7 @@ function Fail($m)  { Write-Host "ERREUR : $m" -ForegroundColor Red; exit 1 }
 # ---- 0. verifications
 Etape "[0] Verifications"
 if ($Config -eq "2coeurs") { Write-Host "ATTENTION : le mode 2 coeurs ne marche pas en demarrage autonome (le coeur 1 a besoin du PC/JTAG). Utilisez pipeline\pipeline_complet.ps1. -> config 'benchmark' utilisee." -ForegroundColor Yellow; $Config = "benchmark" }
-$cfgFile = switch ($Config) { "normal" { "config_normal.txt" } "benchmark" { "config_benchmark.txt" } "complet" { "config_complet_avec_scalaire.txt" } default { Fail "config inconnue : $Config (normal, benchmark ou complet)" } }
+$cfgFile = switch ($Config) { "normal" { "config_normal.txt" } "benchmark" { "config_benchmark.txt" } "complet" { "config_complet_avec_scalaire.txt" } "production" { "config_production.txt" } default { Fail "config inconnue : $Config (normal, benchmark, complet ou production)" } }
 foreach ($f in @("$Root\sw_net\model.bin","$Root\sw_sd\config_sd\$cfgFile","$Root\sw_sd\make_boot.ps1","$Root\vivado\design_1_wrapper.xsa")) { if (-not (Test-Path $f)) { Fail "fichier absent : $f" } }
 if ($Images -and -not (Test-Path $Images)) { Fail "dossier d'images introuvable : $Images" }
 
@@ -53,7 +54,9 @@ if (-not $elf -or $Reconstruire) {
   Write-Host "Compilation (quelques minutes)..."
   $log = "$Root\logs\build_$(Get-Date -Format yyyyMMdd_HHmmss).txt"
   New-Item -ItemType Directory -Force "$Root\logs" | Out-Null
+  $ErrorActionPreference = "Continue"   # xsct ecrit des messages normaux sur stderr : ne pas les prendre pour des erreurs
   & $Xsct "$Root\sw_sd\build_yolo_sd.tcl" *> $log
+  $ErrorActionPreference = "Stop"
   $elf = & $elfPath
   if (-not $elf) { Fail "compilation echouee, voir $log" }
 }

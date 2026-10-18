@@ -207,6 +207,8 @@ static void base_name(const char *name, char *out) { strncpy(out, name, 63); out
  *                              n'existe que si le programme du coeur 1 est charge par JTAG) ; scalar = ARM seul (C simple, lent)
  *   repeat=3                 (repetitions par image et par mode ; defaut 1 ; le mode scalar n'est execute qu'une fois)
  *   diag=0                   (1 = affiche des empreintes de diagnostic)
+ *   production=1             (mode production : mode ip, 1 passage, et SEULE l'image annotee <nom>_det.bmp est ecrite dans out/ ;
+ *                             ni .txt, ni resultats.csv, ni benchmark.csv, ni resume.txt)
  */
 #define MODE_IP 0
 #define MODE_NEON 1
@@ -214,11 +216,11 @@ static void base_name(const char *name, char *out) { strncpy(out, name, 63); out
 #define MODE_NEON2 3
 #define NMODES 4
 static const char *MODE_NAME[NMODES] = { "ip", "neon", "scalar", "neon2" };
-typedef struct { int modes[NMODES]; int nmodes; int repeat; int diag; } app_cfg_t;
+typedef struct { int modes[NMODES]; int nmodes; int repeat; int diag; int production; } app_cfg_t;
 static void parse_cfg(const char *root, app_cfg_t *c)
 {
     char path[160], buf[2048]; size_t n = 0;
-    c->modes[0] = MODE_IP; c->nmodes = 1; c->repeat = 1; c->diag = 0;
+    c->modes[0] = MODE_IP; c->nmodes = 1; c->repeat = 1; c->diag = 0; c->production = 0;
     snprintf(path, sizeof path, "%sconfig.txt", root);
     if (fs_read(path, buf, sizeof buf - 1, &n) || n == 0) return;
     buf[n] = 0;
@@ -230,6 +232,7 @@ static void parse_cfg(const char *root, app_cfg_t *c)
             *eq = 0; const char *k = l, *v = eq + 1;
             if (!strcmp(k, "repeat")) { int r = atoi(v); c->repeat = r < 1 ? 1 : r > 50 ? 50 : r; }
             else if (!strcmp(k, "diag")) c->diag = atoi(v) != 0;
+            else if (!strcmp(k, "production")) c->production = atoi(v) != 0;
             else if (!strcmp(k, "modes")) {
                 c->nmodes = 0;
                 for (const char *t = v; *t && c->nmodes < NMODES; ) {
@@ -244,6 +247,7 @@ static void parse_cfg(const char *root, app_cfg_t *c)
         if (!sv) break;
         l = e + 1; while (*l == '\n' || *l == '\r') l++;
     }
+    if (c->production) { c->modes[0] = MODE_IP; c->nmodes = 1; c->repeat = 1; c->diag = 0; }   /* production : FPGA, un seul calcul par image */
 }
 
 static uint64_t heads_hash(const yolo_ctx_t *cx)
@@ -283,7 +287,7 @@ int app_run(const yolo_hw_t *hw_ip, const yolo_hw_t *hw_neon, const yolo_hw_t *h
     snprintf(path, sizeof path, "%simages", root); int ni = fs_list_images(path, names, 64);
     if (ni <= 0) { printf("Erreur : aucune image dans %s\r\n", path); return -2; }
     snprintf(path, sizeof path, "%sout", root); fs_mkdir(path);
-    printf("%d image(s)\r\n", ni);
+    printf("%d image(s)%s\r\n", ni, cfg.production ? " (mode production : images annotees seulement)" : "");
 
     size_t rl = 0;
     app_cat(report, sizeof report, &rl, "image,largeur,hauteur,lecture_ms,decodage_ms,pretraitement_ms,reseau_ms,decodage_boites_ms,traitement_total_ms,ecriture_ms,detections\n");
@@ -336,7 +340,7 @@ int app_run(const yolo_hw_t *hw_ip, const yolo_hw_t *hw_neon, const yolo_hw_t *h
             uint64_t um = (uint64_t)(mean + 0.5), us = (uint64_t)(sd + 0.5);
             app_cat(bench, sizeof bench, &bl, "%s,%s,%d,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%s\n",
                     names[im], MODE_NAME[mode], reps, MS(um), MS(mn_us), MS(mx_us), MS(us), MS(q), MS(g), MS(f), MS(p), MS(o), same ? "oui" : "NON");
-            printf("%s [%s] : reseau moy %u.%03u ms (min %u.%03u, max %u.%03u, %d rep.), sorties %s\r\n", names[im], MODE_NAME[mode], MS(um), MS(mn_us), MS(mx_us), reps, same ? "identiques" : "DIFFERENTES");
+            if (!cfg.production) printf("%s [%s] : reseau moy %u.%03u ms (min %u.%03u, max %u.%03u, %d rep.), sorties %s\r\n", names[im], MODE_NAME[mode], MS(um), MS(mn_us), MS(mx_us), reps, same ? "identiques" : "DIFFERENTES");
             acc[mode].sum_mean_ms += mean / 1000.0; acc[mode].n++;
         }
 
@@ -363,12 +367,14 @@ int app_run(const yolo_hw_t *hw_ip, const yolo_hw_t *hw_neon, const yolo_hw_t *h
             fill_rect(rgb, w, h, x1, ly, x1 + lw, ly + lh - 1, col); draw_text(rgb, w, h, x1, ly, lab, sc, blk);
         }
         uint64_t b0 = hw->now_us();
-        snprintf(path, sizeof path, "%sout/%s.txt", root, base); fs_write(path, txt, tl);
+        if (!cfg.production) { snprintf(path, sizeof path, "%sout/%s.txt", root, base); fs_write(path, txt, tl); }
         snprintf(path, sizeof path, "%sout/%s_det.bmp", root, base); int rb = write_bmp(path, rgb, w, h);
         uint64_t te = hw->now_us() - b0;
         app_cat(report, sizeof report, &rl, "%s,%d,%d,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%u.%03u,%d\n", names[im], w, h, MS(tr), MS(td), MS(tp), MS(tn), MS(tb), MS(tt), MS(te), nd);
-        printf("%s : %dx%d, %d detection(s), total %u.%03u ms%s\r\n", names[im], w, h, nd, MS(tt), rb ? " (BMP non ecrit : memoire)" : "");
+        if (cfg.production) printf("%s : %d detection(s)%s\r\n", names[im], nd, rb ? " (BMP non ecrit : memoire)" : "");
+        else printf("%s : %dx%d, %d detection(s), total %u.%03u ms%s\r\n", names[im], w, h, nd, MS(tt), rb ? " (BMP non ecrit : memoire)" : "");
     }
+    if (cfg.production) { printf("=== Fin : images annotees dans out/ ===\r\n"); return 0; }
     snprintf(path, sizeof path, "%sout/resultats.csv", root); fs_write(path, report, rl);
     snprintf(path, sizeof path, "%sout/benchmark.csv", root); fs_write(path, bench, bl);
 
